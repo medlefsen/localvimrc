@@ -18,3 +18,5 @@ g:localvimrc_sandbox
 g:localvimrc_ask
   Ask before sourcing any local vimrc file. Defaults to 1.
 
+g:localvimrc_trustfile
+  File to store trusted local vimrc paths.  Defaults to "$HOME/.localvimrc_trusted".

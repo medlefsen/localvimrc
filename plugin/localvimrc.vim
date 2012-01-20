@@ -38,6 +38,10 @@
 "     Ask before sourcing any local vimrc file.
 "     Defaults to 1.
 "
+"   g:localvimrc_trustfile
+"     File to store trusted local vimrc paths.
+"     Defaults to "$HOME/.localvimrc_trusted".
+"
 " Credits:
 " - Simon Howard for his hint about "sandbox"
 "
@@ -73,6 +77,11 @@ if (!exists("g:localvimrc_ask"))
   let g:localvimrc_ask = 1
 endif
 
+" define default for trustfile {{{2
+if (!exists("g:localvimrc_trustfile"))
+  let g:localvimrc_trustfile = $HOME . "/.localvimrc_trustfile"
+endif
+
 " Section: Functions {{{1
 " Function: s:localvimrc {{{2
 "
@@ -95,22 +104,41 @@ function! s:localvimrc()
     let l:rcfiles = l:rcfiles[0:(g:localvimrc_count-1)]
   endif
 
+  if filereadable(g:localvimrc_trustfile)
+    exec "source  " . g:localvimrc_trustfile
+  endif
+  if !exists("g:localvimrc_trusted")
+    let g:localvimrc_trusted = []
+  endif
+
   " source all found local vimrc files along path from root (reverse order)
   let l:answer = ""
   for l:rcfile in reverse(l:rcfiles)
     if filereadable(l:rcfile)
       " ask if this rcfile should be loaded
-      if (l:answer != "a")
+      if l:rcfile =~ '^/'
+        let l:rcpath = l:rcfile
+      else
+        let l:rcpath = simplify(getcwd() . '/' . l:rcfile)
+      endif
+      if (count(g:localvimrc_trusted,l:rcpath) == 0 && l:answer != "a")
         if (g:localvimrc_ask == 1)
-          let l:message = "localvimrc: source " . l:rcfile . "? (y/n/a/q) "
+          let l:message = "localvimrc: source " . l:rcpath . "?\n t[rust], y[es], n[o], a[ll], q[uit]> "
           let l:answer = input(l:message)
         else
           let l:answer = "a"
         endif
       endif
 
+      if (l:answer =~ '^t\(rust\)\?$')
+        call add(g:localvimrc_trusted,l:rcpath)
+        exec "redir! > " . g:localvimrc_trustfile
+        silent echo 'let g:localvimrc_trusted = ' . string(g:localvimrc_trusted)
+        redir end
+      endif
+
       " check the answer
-      if (l:answer == "y" || l:answer == "a")
+      if (l:answer =~ '^y\(es\)\?$' || l:answer =~ '^a\(ll\)\?$' || l:answer =~ '^t\(rust\)\?$')
 
         " add 'sandbox' if requested
         if (g:localvimrc_sandbox != 0)
